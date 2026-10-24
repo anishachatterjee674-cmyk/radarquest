@@ -6,7 +6,7 @@ Knowledge Panel, AI Overview, Google Lens visual search, and Trending Topics.
 
 import os
 from typing import Optional
-from fastapi import FastAPI, Query, File, UploadFile, Form
+from fastapi import FastAPI, Query, Request
 from fastapi.responses import HTMLResponse, JSONResponse, FileResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
@@ -159,10 +159,7 @@ async def ai_overview(q: str = Query(..., description="Query for AI overview syn
 
 
 @app.post("/api/lens")
-async def lens_visual_search(
-    file: Optional[UploadFile] = File(None),
-    image_url: Optional[str] = Form(None)
-):
+async def lens_visual_search(request: Request):
     """
     Google Lens Visual Search handler:
     Analyzes uploaded image or image URL, identifies visual subjects,
@@ -171,19 +168,26 @@ async def lens_visual_search(
     inferred_query = "Space exploration"
     detected_tags = ["Technology", "Modern Innovation", "Science"]
 
-    if file and file.filename:
-        # Derive intelligent query hints from image filename
-        base_name = os.path.splitext(file.filename)[0]
-        cleaned_name = base_name.replace("-", " ").replace("_", " ").title()
-        if len(cleaned_name) > 2 and not cleaned_name.isdigit():
-            inferred_query = cleaned_name
-            detected_tags = [cleaned_name, "Visual Match", "Object Identification"]
-        else:
-            inferred_query = "High resolution visual photo"
-            detected_tags = ["Visual Search", "Image Identification"]
-    elif image_url:
-        inferred_query = "Visual Web Search"
-        detected_tags = ["Image Search", "Web Match"]
+    try:
+        form = await request.form()
+        file = form.get("file")
+        image_url = form.get("image_url")
+
+        if file and hasattr(file, "filename") and file.filename:
+            # Derive intelligent query hints from image filename
+            base_name = os.path.splitext(file.filename)[0]
+            cleaned_name = base_name.replace("-", " ").replace("_", " ").title()
+            if len(cleaned_name) > 2 and not cleaned_name.isdigit():
+                inferred_query = cleaned_name
+                detected_tags = [cleaned_name, "Visual Match", "Object Identification"]
+            else:
+                inferred_query = "High resolution visual photo"
+                detected_tags = ["Visual Search", "Image Identification"]
+        elif image_url:
+            inferred_query = "Visual Web Search"
+            detected_tags = ["Image Search", "Web Match"]
+    except Exception:
+        pass
 
     # Search web and images for this visual query
     web_res = search_service.search_web(inferred_query)

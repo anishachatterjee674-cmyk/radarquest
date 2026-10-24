@@ -1,0 +1,738 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="referrer" content="no-referrer">
+  <title>RadarQuest - Explore the World's Knowledge</title>
+  <meta name="description" content="A next-generation search engine featuring dynamic rotating 4K wallpapers, AI Overviews, Reddit & human discussion focus, instant webpage TL;DR summaries, and research briefs.">
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'><text y='20' font-size='20'>🛰️</text></svg>">
+  
+  <!-- Modern Google Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Outfit:wght@500;600;700;800;900&display=swap" rel="stylesheet">
+  
+  <!-- Main Stylesheet -->
+  <link rel="stylesheet" href="/static/css/style.css?v=3.1">
+</head>
+<body class="theme-dark">
+
+
+
+
+  <!-- ========================================================
+       TOP GLOBAL NAVIGATION HEADER
+  ======================================================== -->
+  <header class="global-header" id="global-header">
+    <div class="header-left">
+      <button class="nav-btn" id="home-link-btn" title="RadarQuest Home">Home</button>
+      <div class="privacy-shield-pill" title="100% Zero-Tracking Privacy: No search logs, No ad tracking, No cookies">
+        <span class="shield-icon">🛡️</span>
+        <span class="shield-text">Zero-Tracking Shield</span>
+      </div>
+    </div>
+    <div class="header-right">
+      <a href="#all" class="nav-link" id="header-web-link">Web</a>
+      <a href="#images" class="nav-link" id="header-images-link">Images</a>
+      
+      <!-- Theme Switcher -->
+      <button class="icon-btn theme-toggle-btn" id="theme-toggle-btn" title="Toggle Dark/Light Glass Mode" aria-label="Toggle Theme">
+        <svg class="sun-icon" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2">
+          <circle cx="12" cy="12" r="5"></circle>
+          <line x1="12" y1="1" x2="12" y2="3"></line>
+          <line x1="12" y1="21" x2="12" y2="23"></line>
+          <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line>
+          <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line>
+          <line x1="1" y1="12" x2="3" y2="12"></line>
+          <line x1="21" y1="12" x2="23" y2="12"></line>
+          <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line>
+          <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
+        </svg>
+        <svg class="moon-icon" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
+        </svg>
+      </button>
+
+      <!-- Apps 9-Dot Grid -->
+      <button class="icon-btn apps-menu-btn" id="apps-menu-btn" title="RadarQuest Apps" aria-label="Apps Menu">
+        <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor">
+          <circle cx="6" cy="6" r="2"></circle>
+          <circle cx="12" cy="6" r="2"></circle>
+          <circle cx="18" cy="6" r="2"></circle>
+          <circle cx="6" cy="12" r="2"></circle>
+          <circle cx="12" cy="12" r="2"></circle>
+          <circle cx="18" cy="12" r="2"></circle>
+          <circle cx="6" cy="18" r="2"></circle>
+          <circle cx="12" cy="18" r="2"></circle>
+          <circle cx="18" cy="18" r="2"></circle>
+        </svg>
+      </button>
+
+      <!-- User Profile Avatar -->
+      <div class="user-avatar" id="user-avatar-btn" title="Radar User">
+        <span>R</span>
+      </div>
+    </div>
+  </header>
+
+  <!-- ========================================================
+       HOMEPAGE VIEW (RadarQuest Centered Interface)
+  ======================================================== -->
+  <main class="page-container" id="homepage-view">
+    <div class="home-hero">
+      
+      <!-- Brand Logo with Sweeping Radar Icon & Cyber-Neon Gradient -->
+      <div class="logo-wrapper" id="home-logo-trigger">
+        <div class="radar-logo-container">
+          <div class="radar-dish-icon">
+            <div class="radar-sweep-beam"></div>
+            <div class="radar-center-dot"></div>
+          </div>
+          <h1 class="brand-logo-text" aria-label="RadarQuest"><span class="logo-word-radar">Radar</span><span class="logo-word-quest">Quest</span></h1>
+          <span class="brand-badge">PRO</span>
+        </div>
+        <p class="brand-subtext">Intelligent Web Exploration • Unbiased Human Discussions • AI Consensus</p>
+      </div>
+
+      <!-- Radar Focus Lenses Bar (Exclusive Feature Google DOES NOT Have!) -->
+      <div class="focus-lenses-bar" id="home-focus-lenses">
+        <button class="lens-filter-chip active" data-focus="all" title="Search all web">🌐 All Web</button>
+        <button class="lens-filter-chip" data-focus="discussions" title="Search authentic discussions on Reddit & forums">💬 Reddit & Forums</button>
+        <button class="lens-filter-chip" data-focus="dev" title="Search GitHub repositories and developer docs">💻 Dev & Code</button>
+        <button class="lens-filter-chip" data-focus="academic" title="Search scientific research papers and ArXiv">📚 Academic Papers</button>
+      </div>
+
+      <!-- Main Search Box -->
+      <div class="search-box-container" id="home-search-box-container">
+        <div class="search-bar" id="home-search-bar">
+          <div class="search-icon">
+            <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2.4">
+              <circle cx="11" cy="11" r="8"></circle>
+              <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+            </svg>
+          </div>
+          
+          <input 
+            type="text" 
+            id="home-search-input" 
+            class="search-input" 
+            placeholder="Search anything or ask deep questions..." 
+            autocomplete="off" 
+            spellcheck="false"
+            aria-label="Search"
+          >
+
+          <!-- Clear Button -->
+          <button class="clear-btn" id="home-clear-btn" title="Clear text" aria-label="Clear">
+            <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2">
+              <line x1="18" y1="6" x2="6" y2="18"></line>
+              <line x1="6" y1="6" x2="18" y2="18"></line>
+            </svg>
+          </button>
+
+          <!-- Voice Search Button -->
+          <button class="action-btn voice-btn" id="home-voice-btn" title="Search by voice" aria-label="Voice Search">
+            <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor">
+              <path d="M12 14c1.66 0 3-1.34 3-3V5c0-1.66-1.34-3-3-3S9 3.34 9 5v6c0 1.66 1.34 3 3 3z"/>
+              <path d="M17 11c0 2.76-2.24 5-5 5s-5-2.24-5-5H5c0 3.53 2.61 6.43 6 6.92V21h2v-3.08c3.39-.49 6-3.39 6-6.92h-2z"/>
+            </svg>
+          </button>
+
+          <!-- Lens / Visual Search Button -->
+          <button class="action-btn lens-btn" id="home-lens-btn" title="Search by image with RadarQuest Lens" aria-label="RadarQuest Lens">
+            <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/>
+              <circle cx="12" cy="13" r="4"/>
+            </svg>
+          </button>
+        </div>
+
+        <!-- Autocomplete Suggestions Dropdown -->
+        <div class="autocomplete-dropdown" id="home-autocomplete-dropdown">
+          <ul class="suggestions-list" id="home-suggestions-list"></ul>
+        </div>
+      </div>
+
+      <!-- Search Action Buttons -->
+      <div class="search-actions">
+        <button class="search-cta-btn" id="home-search-btn">RadarQuest Search</button>
+        <button class="search-cta-btn lucky-btn" id="home-lucky-btn">⚡ Deep Discovery</button>
+      </div>
+
+      <!-- Trending Searches Ticker -->
+      <div class="trending-container">
+        <div class="trending-label">
+          <span class="trending-fire">🔥</span> Trending Radar:
+        </div>
+        <div class="trending-chips" id="trending-chips"></div>
+      </div>
+
+    </div>
+
+    <!-- Minimalist Homepage Footer -->
+    <footer class="home-footer">
+      <div class="footer-location" id="user-location-text">
+        <span>RadarQuest Pro Engine</span> • 100% Zero-Tracking Privacy Mode
+      </div>
+      <div class="footer-links-row">
+        <div class="footer-links-left">
+          <a href="#about" class="footer-link" id="ft-about">About RadarQuest</a>
+          <a href="#privacy" class="footer-link">No-Tracking Privacy</a>
+          <a href="#lenses" class="footer-link">Focus Lenses</a>
+        </div>
+        <div class="footer-links-right">
+          <a href="#terms" class="footer-link">Terms</a>
+          <a href="#settings" class="footer-link" id="ft-settings">Customization</a>
+        </div>
+      </div>
+    </footer>
+  </main>
+
+  <!-- ========================================================
+       SERP VIEW (Search Engine Results Page)
+  ======================================================== -->
+  <div class="serp-view hidden" id="serp-view">
+    
+    <!-- Sticky SERP Header -->
+    <div class="serp-header">
+      <div class="serp-header-top">
+        <!-- Mini Logo -->
+        <div class="serp-logo" id="serp-logo-btn" title="Back to RadarQuest Home">
+          <div class="radar-dish-icon" style="width: 32px; height: 32px;">
+            <div class="radar-sweep-beam"></div>
+            <div class="radar-center-dot" style="width: 6px; height: 6px;"></div>
+          </div>
+          <span class="brand-logo-text"><span class="logo-word-radar">Radar</span><span class="logo-word-quest">Quest</span></span>
+        </div>
+
+        <!-- Sticky Search Box -->
+        <div class="serp-search-container">
+          <div class="serp-search-bar" id="serp-search-bar">
+            <input 
+              type="text" 
+              id="serp-search-input" 
+              class="search-input" 
+              autocomplete="off" 
+              spellcheck="false"
+              aria-label="Search Query"
+            >
+
+            <button class="clear-btn" id="serp-clear-btn" title="Clear text">
+              <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2">
+                <line x1="18" y1="6" x2="6" y2="18"></line>
+                <line x1="6" y1="6" x2="18" y2="18"></line>
+              </svg>
+            </button>
+
+            <span class="search-bar-divider"></span>
+
+            <button class="action-btn voice-btn" id="serp-voice-btn" title="Search by voice">
+              <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor">
+                <path d="M12 14c1.66 0 3-1.34 3-3V5c0-1.66-1.34-3-3-3S9 3.34 9 5v6c0 1.66 1.34 3 3 3z"/>
+                <path d="M17 11c0 2.76-2.24 5-5 5s-5-2.24-5-5H5c0 3.53 2.61 6.43 6 6.92V21h2v-3.08c3.39-.49 6-3.39 6-6.92h-2z"/>
+              </svg>
+            </button>
+
+            <button class="action-btn lens-btn" id="serp-lens-btn" title="Search by image">
+              <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/>
+                <circle cx="12" cy="13" r="4"/>
+              </svg>
+            </button>
+
+            <button class="serp-search-submit-btn" id="serp-search-submit-btn" title="Search">
+              <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.4">
+                <circle cx="11" cy="11" r="8"></circle>
+                <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+              </svg>
+            </button>
+          </div>
+
+          <!-- SERP Autocomplete Dropdown -->
+          <div class="autocomplete-dropdown" id="serp-autocomplete-dropdown">
+            <ul class="suggestions-list" id="serp-suggestions-list"></ul>
+          </div>
+        </div>
+
+        <!-- Right Quick Controls -->
+        <div class="serp-controls">
+          <!-- 1-Click Export Research Brief Button (Google Doesn't Have!) -->
+          <button class="export-brief-btn" id="export-brief-btn" title="Export Research Brief (Markdown)">
+            <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+              <polyline points="14 2 14 8 20 8"></polyline>
+              <line x1="16" y1="13" x2="8" y2="13"></line>
+              <line x1="16" y1="17" x2="8" y2="17"></line>
+              <polyline points="10 9 9 9 8 9"></polyline>
+            </svg>
+            <span>Export Brief</span>
+          </button>
+
+          <button class="icon-btn theme-toggle-btn" id="serp-theme-toggle" title="Toggle Glass Theme">
+            <svg class="sun-icon" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2">
+              <circle cx="12" cy="12" r="5"></circle>
+              <line x1="12" y1="1" x2="12" y2="3"></line>
+              <line x1="12" y1="21" x2="12" y2="23"></line>
+              <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line>
+              <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line>
+              <line x1="1" y1="12" x2="3" y2="12"></line>
+              <line x1="21" y1="12" x2="23" y2="12"></line>
+              <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line>
+              <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
+            </svg>
+            <svg class="moon-icon" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
+            </svg>
+          </button>
+
+          <div class="user-avatar" id="serp-avatar-btn">
+            <span>R</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Secondary Search Category & Focus Lens Tabs -->
+      <nav class="serp-tabs" aria-label="Search Categories">
+        <div class="tabs-container">
+          <button class="tab-btn active" data-category="all" id="tab-all">
+            <span>🌐 All Web</span>
+          </button>
+
+          <!-- Reddit & Discussions Lens -->
+          <button class="tab-btn" data-category="all" data-focus="discussions" id="tab-discussions" title="Real human insights from Reddit & discussion forums">
+            <span>💬 Reddit & Forums</span>
+          </button>
+
+          <!-- Dev Hub Lens -->
+          <button class="tab-btn" data-category="all" data-focus="dev" id="tab-dev" title="GitHub, Docs, and Developer Q&A">
+            <span>💻 Dev & Code</span>
+          </button>
+
+          <!-- Academic Lens -->
+          <button class="tab-btn" data-category="all" data-focus="academic" id="tab-academic" title="Research papers and ArXiv studies">
+            <span>📚 Academic</span>
+          </button>
+
+          <button class="tab-btn" data-category="images" id="tab-images">
+            <span>🖼️ Images</span>
+          </button>
+
+          <button class="tab-btn" data-category="news" id="tab-news">
+            <span>📰 News</span>
+          </button>
+
+          <button class="tab-btn" data-category="videos" id="tab-videos">
+            <span>🎬 Videos</span>
+          </button>
+
+          <button class="tab-btn ai-tab" data-category="ai" id="tab-ai">
+            <span class="ai-tab-sparkle">✨</span>
+            <span>AI Overview</span>
+          </button>
+
+          <div class="tabs-tools-wrapper">
+            <button class="tools-btn" id="tools-toggle-btn">Filter Tools</button>
+          </div>
+        </div>
+      </nav>
+
+      <!-- Search Tools Filter Bar -->
+      <div class="tools-bar hidden" id="tools-bar">
+        <div class="tool-dropdown-wrapper">
+          <label for="time-filter-select" class="tool-label">Time Window:</label>
+          <select id="time-filter-select" class="tool-select">
+            <option value="">Any time</option>
+            <option value="h">Past hour</option>
+            <option value="d">Past 24 hours</option>
+            <option value="w">Past week</option>
+            <option value="m">Past month</option>
+            <option value="y">Past year</option>
+          </select>
+        </div>
+      </div>
+    </div>
+
+    <!-- Main Results Container -->
+    <div class="serp-content">
+      
+      <!-- Metrics Bar with Active Lens Indicator -->
+      <div class="results-stats" id="results-stats">
+        <span>About 1,840,000 results (0.24 seconds)</span>
+        <span class="active-lens-badge hidden" id="active-lens-badge">Focus: All Web</span>
+      </div>
+
+      <!-- Main Layout Grid -->
+      <div class="serp-grid">
+        
+        <!-- Primary Results Column -->
+        <div class="serp-primary-col" id="serp-primary-col">
+          
+          <!-- ==============================================
+               AI OVERVIEW BOX (Perplexity & Deep Consensus Style)
+          ============================================== -->
+          <section class="ai-overview-card" id="ai-overview-card">
+            <div class="ai-overview-header">
+              <div class="ai-header-left">
+                <div class="ai-glow-icon">✨</div>
+                <div>
+                  <h2 class="ai-title">Radar AI Overview</h2>
+                  <span class="ai-subtitle" id="ai-model-tag">Synthesizing consensus across top web sources</span>
+                </div>
+              </div>
+              <div class="ai-header-right">
+                <button class="ai-perspective-btn" id="ai-perspective-btn" title="Toggle Contrarian & Alternative Perspectives">
+                  <span>⚖️ Contrarian Views</span>
+                </button>
+                <button class="ai-copy-btn" id="ai-copy-btn" title="Copy Overview">
+                  <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2">
+                    <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+                    <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+                  </svg>
+                  <span>Copy</span>
+                </button>
+                <button class="ai-collapse-btn" id="ai-collapse-btn" title="Collapse or Expand">
+                  <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2">
+                    <polyline points="18 15 12 9 6 15"></polyline>
+                  </svg>
+                </button>
+              </div>
+            </div>
+
+            <!-- Loading Shimmer State -->
+            <div class="ai-skeleton-loader" id="ai-skeleton-loader">
+              <div class="skeleton-line shimmer full"></div>
+              <div class="skeleton-line shimmer medium"></div>
+              <div class="skeleton-line shimmer full"></div>
+              <div class="skeleton-line shimmer short"></div>
+            </div>
+
+            <!-- Dynamic AI Content Body -->
+            <div class="ai-overview-body hidden" id="ai-overview-body">
+              <div class="ai-summary-text" id="ai-summary-text"></div>
+              <ul class="ai-bullets-list" id="ai-bullets-list"></ul>
+
+              <!-- Contrarian & Alternative Perspectives Box (Exclusive Feature) -->
+              <div class="ai-contrarian-box hidden" id="ai-contrarian-box">
+                <div class="contrarian-heading">
+                  <span>⚖️ Critical Analysis & Alternative Perspectives:</span>
+                </div>
+                <div class="contrarian-content" id="ai-contrarian-content"></div>
+              </div>
+
+              <!-- Cited Source Cards Carousel -->
+              <div class="ai-sources-section">
+                <div class="sources-heading">Verified Sources Cited:</div>
+                <div class="ai-sources-scroll" id="ai-sources-scroll"></div>
+              </div>
+            </div>
+          </section>
+
+          <!-- ==============================================
+               PEOPLE ALSO ASK (PAA) ACCORDIONS
+          ============================================== -->
+          <section class="paa-card" id="paa-card">
+            <h3 class="paa-heading">People also ask</h3>
+            <div class="paa-list" id="paa-list"></div>
+          </section>
+
+          <!-- ==============================================
+               ORGANIC WEB SEARCH RESULTS WITH TL;DR PEEK
+          ============================================== -->
+          <div class="web-results-list" id="web-results-list"></div>
+
+          <!-- ==============================================
+               IMAGE GRID (When Images tab active)
+          ============================================== -->
+          <div class="images-grid-container hidden" id="images-grid-container">
+            <div class="images-grid" id="images-grid"></div>
+          </div>
+
+          <!-- ==============================================
+               NEWS GRID (When News tab active)
+          ============================================== -->
+          <div class="news-list-container hidden" id="news-list-container">
+            <div class="news-list" id="news-list"></div>
+          </div>
+
+          <!-- ==============================================
+               VIDEOS GRID (When Videos tab active)
+          ============================================== -->
+          <div class="videos-list-container hidden" id="videos-list-container">
+            <div class="videos-list" id="videos-list"></div>
+          </div>
+
+          <!-- ==============================================
+               PAGINATION ("RadarQuest" Style)
+          ============================================== -->
+          <div class="serp-pagination" id="serp-pagination">
+            <div class="pagination-logo" id="pagination-logo">
+              <span class="logo-word-radar">Radar</span><span class="logo-word-quest">Quest</span>
+            </div>
+            <div class="pagination-controls" id="pagination-controls">
+              <button class="page-btn active" data-page="1">1</button>
+              <button class="page-btn" data-page="2">2</button>
+              <button class="page-btn" data-page="3">3</button>
+              <button class="page-btn" data-page="4">4</button>
+              <button class="page-btn" data-page="5">5</button>
+              <button class="page-next-btn" id="page-next-btn">Next ›</button>
+            </div>
+          </div>
+
+          <!-- ==============================================
+               RELATED SEARCHES PILLS
+          ============================================== -->
+          <section class="related-searches" id="related-searches">
+            <h3 class="related-heading">Related discoveries</h3>
+            <div class="related-grid" id="related-grid"></div>
+          </section>
+
+        </div>
+
+        <!-- Secondary Right Column (Knowledge Panel) -->
+        <aside class="serp-secondary-col" id="serp-secondary-col">
+          <div class="knowledge-panel hidden" id="knowledge-panel">
+            <div class="kp-image-wrapper" id="kp-image-wrapper">
+              <img id="kp-hero-image" src="" alt="Entity preview" loading="lazy">
+            </div>
+            <div class="kp-content">
+              <h3 class="kp-title" id="kp-title"></h3>
+              <p class="kp-subtitle" id="kp-subtitle"></p>
+              <div class="kp-extract" id="kp-extract"></div>
+              
+              <div class="kp-facts" id="kp-facts"></div>
+
+              <div class="kp-actions">
+                <a href="#" target="_blank" rel="noopener noreferrer" class="kp-wiki-btn" id="kp-wiki-link">
+                  <span>Explore Encyclopedia Dossier</span>
+                  <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path>
+                    <polyline points="15 3 21 3 21 9"></polyline>
+                    <line x1="10" y1="14" x2="21" y2="3"></line>
+                  </svg>
+                </a>
+              </div>
+            </div>
+          </div>
+        </aside>
+
+      </div>
+    </div>
+  </div>
+
+  <!-- ========================================================
+       MODALS & OVERLAYS
+  ======================================================== -->
+
+  <!-- 1. Voice Search Animated Overlay -->
+  <div class="modal-overlay hidden" id="voice-modal">
+    <div class="voice-modal-card">
+      <button class="modal-close-btn" id="voice-close-btn" aria-label="Close Voice Search">×</button>
+      <div class="voice-visualizer">
+        <div class="voice-pulse-ring ring-1"></div>
+        <div class="voice-pulse-ring ring-2"></div>
+        <div class="voice-pulse-ring ring-3"></div>
+        <div class="voice-mic-core">
+          <svg viewBox="0 0 24 24" width="36" height="36" fill="white">
+            <path d="M12 14c1.66 0 3-1.34 3-3V5c0-1.66-1.34-3-3-3S9 3.34 9 5v6c0 1.66 1.34 3 3 3z"/>
+            <path d="M17 11c0 2.76-2.24 5-5 5s-5-2.24-5-5H5c0 3.53 2.61 6.43 6 6.92V21h2v-3.08c3.39-.49 6-3.39 6-6.92h-2z"/>
+          </svg>
+        </div>
+      </div>
+      <h3 class="voice-status" id="voice-status-text">Listening...</h3>
+      <p class="voice-hint">Say something like "SpaceX Starship" or "Quantum Supremacy"</p>
+      <div class="voice-transcript" id="voice-transcript-text"></div>
+    </div>
+  </div>
+
+  <!-- 2. RadarQuest Lens / Visual Search Modal -->
+  <div class="modal-overlay hidden" id="lens-modal">
+    <div class="lens-modal-card">
+      <button class="modal-close-btn" id="lens-close-btn" aria-label="Close Lens">×</button>
+      <div class="lens-header">
+        <div class="lens-icon-badge">
+          <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/>
+            <circle cx="12" cy="13" r="4"/>
+          </svg>
+        </div>
+        <div>
+          <h3>Search any image with RadarQuest Lens</h3>
+          <p>Drag an image here or paste an image link to identify objects, landmarks, or visual matches</p>
+        </div>
+      </div>
+
+      <div class="lens-dropzone" id="lens-dropzone">
+        <input type="file" id="lens-file-input" accept="image/*" class="hidden">
+        <div class="dropzone-inner">
+          <svg viewBox="0 0 24 24" width="48" height="48" fill="none" stroke="currentColor" stroke-width="1.5">
+            <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
+            <circle cx="8.5" cy="8.5" r="1.5"></circle>
+            <polyline points="21 15 16 10 5 21"></polyline>
+          </svg>
+          <p>Drag an image here or <span class="upload-trigger">upload a file</span></p>
+        </div>
+      </div>
+
+      <div class="lens-divider"><span>OR</span></div>
+
+      <div class="lens-url-box">
+        <input type="url" id="lens-url-input" placeholder="Paste image URL (https://...)" class="search-input">
+        <button class="lens-search-btn" id="lens-url-submit-btn">Search</button>
+      </div>
+
+      <div class="lens-presets">
+        <span>Try searching:</span>
+        <button class="lens-chip" data-sample="Saturn planet">🪐 Saturn</button>
+        <button class="lens-chip" data-sample="Mount Everest">🏔️ Mount Everest</button>
+        <button class="lens-chip" data-sample="Golden Retriever">🐕 Golden Retriever</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 3. Video Embed Player Modal -->
+  <div class="modal-overlay hidden" id="video-modal">
+    <div class="video-modal-card">
+      <button class="modal-close-btn" id="video-close-btn" aria-label="Close Video">×</button>
+      <div class="video-iframe-container">
+        <iframe id="video-iframe" src="" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>
+      </div>
+      <h3 class="video-modal-title" id="video-modal-title"></h3>
+    </div>
+  </div>
+
+  <!-- 4. Image Lightbox Modal -->
+  <div class="modal-overlay hidden" id="lightbox-modal">
+    <div class="lightbox-modal-card">
+      <button class="modal-close-btn" id="lightbox-close-btn" aria-label="Close Lightbox">×</button>
+      <div class="lightbox-img-wrapper">
+        <img id="lightbox-img" src="" alt="Preview image">
+      </div>
+      <div class="lightbox-meta">
+        <h4 id="lightbox-title"></h4>
+        <div class="lightbox-actions">
+          <a href="#" target="_blank" id="lightbox-source-link" class="action-link-btn">Visit Website</a>
+          <a href="#" target="_blank" download id="lightbox-download-link" class="action-link-btn secondary">Download High-Res</a>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 5. Apps Drawer -->
+  <div class="apps-drawer hidden" id="apps-drawer">
+    <div class="apps-grid">
+      <a href="#all" class="app-item" data-app="search">
+        <span class="app-icon">🛰️</span>
+        <span class="app-name">Radar Web</span>
+      </a>
+      <a href="#discussions" class="app-item" data-app="discussions">
+        <span class="app-icon">💬</span>
+        <span class="app-name">Reddit & Forums</span>
+      </a>
+      <a href="#dev" class="app-item" data-app="dev">
+        <span class="app-icon">💻</span>
+        <span class="app-name">Dev Hub</span>
+      </a>
+      <a href="#academic" class="app-item" data-app="academic">
+        <span class="app-icon">📚</span>
+        <span class="app-name">Academic</span>
+      </a>
+      <a href="#images" class="app-item" data-app="images">
+        <span class="app-icon">🖼️</span>
+        <span class="app-name">Images</span>
+      </a>
+      <a href="#news" class="app-item" data-app="news">
+        <span class="app-icon">📰</span>
+        <span class="app-name">News</span>
+      </a>
+      <a href="#videos" class="app-item" data-app="videos">
+        <span class="app-icon">🎬</span>
+        <span class="app-name">Videos</span>
+      </a>
+      <a href="#ai" class="app-item" data-app="gemini">
+        <span class="app-icon">✨</span>
+        <span class="app-name">Consensus AI</span>
+      </a>
+    </div>
+  </div>
+
+  <!-- 6. Instant Webpage TL;DR Modal (Feature Google Doesn't Have!) -->
+  <div class="modal-overlay hidden" id="tldr-modal">
+    <div class="tldr-modal-card">
+      <div class="tldr-modal-header">
+        <div class="tldr-badge-row">
+          <span class="tldr-feature-pill">⚡ Instant AI TL;DR</span>
+          <span class="tldr-meta-pill" id="tldr-meta-time">⏱️ 3 min read</span>
+          <span class="tldr-meta-pill" id="tldr-meta-words">📄 650 words</span>
+          <span class="tldr-meta-pill cred" id="tldr-meta-cred">🛡️ Ad-Free Summary</span>
+        </div>
+        <button class="modal-close-btn" id="tldr-close-btn" aria-label="Close TL;DR">×</button>
+      </div>
+
+      <h3 class="tldr-modal-title" id="tldr-modal-title">Loading Page Summary...</h3>
+      <a href="#" target="_blank" rel="noopener noreferrer" class="tldr-url-link" id="tldr-modal-url"></a>
+
+      <div class="tldr-body" id="tldr-modal-body">
+        <div class="tldr-skeleton" id="tldr-skeleton">
+          <div class="skeleton-line shimmer full"></div>
+          <div class="skeleton-line shimmer medium"></div>
+          <div class="skeleton-line shimmer full"></div>
+        </div>
+
+        <div class="tldr-content hidden" id="tldr-content-box">
+          <div class="tldr-takeaways-heading">📌 Key Executive Takeaways:</div>
+          <ul class="tldr-bullets-list" id="tldr-bullets-list"></ul>
+          <div class="tldr-lead-section">
+            <div class="tldr-lead-heading">📖 Lead Overview:</div>
+            <p class="tldr-lead-text" id="tldr-lead-text"></p>
+          </div>
+        </div>
+      </div>
+
+      <div class="tldr-footer">
+        <button class="tldr-copy-btn" id="tldr-copy-btn">
+          <span>📋 Copy Summary</span>
+        </button>
+        <a href="#" target="_blank" rel="noopener noreferrer" class="tldr-open-btn" id="tldr-open-btn">
+          <span>Visit Full Article ↗</span>
+        </a>
+      </div>
+    </div>
+  </div>
+
+  <!-- 7. Export Research Brief Modal (Feature Google Doesn't Have!) -->
+  <div class="modal-overlay hidden" id="brief-modal">
+    <div class="brief-modal-card">
+      <div class="brief-header">
+        <div class="brief-title-wrap">
+          <span class="brief-icon">📑</span>
+          <div>
+            <h3>One-Click Research Brief</h3>
+            <p>Ready to paste into Notion, Obsidian, or Markdown notes</p>
+          </div>
+        </div>
+        <button class="modal-close-btn" id="brief-close-btn" aria-label="Close Brief">×</button>
+      </div>
+
+      <div class="brief-preview-box">
+        <pre class="brief-markdown-preview" id="brief-markdown-preview"></pre>
+      </div>
+
+      <div class="brief-actions">
+        <button class="brief-action-btn primary" id="brief-copy-btn">
+          <span>📋 Copy to Clipboard</span>
+        </button>
+        <button class="brief-action-btn" id="brief-download-btn">
+          <span>💾 Download .md File</span>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Toast Notification Message -->
+  <div class="toast-container" id="toast-container"></div>
+
+  <!-- Main JavaScript Application Logic -->
+  <script src="/static/js/app.js?v=3.1"></script>
+</body>
+</html>
