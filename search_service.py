@@ -155,6 +155,25 @@ WALLPAPERS = [
 ]
 
 
+FILE_TYPE_METADATA = {
+    "pdf": {"type": "PDF", "label": "PDF Document", "color": "#ef4444"},
+    "ppt": {"type": "PPT", "label": "PowerPoint Presentation", "color": "#ea580c"},
+    "pptx": {"type": "PPTX", "label": "PowerPoint Presentation", "color": "#ea580c"},
+    "doc": {"type": "DOC", "label": "Word Document", "color": "#2563eb"},
+    "docx": {"type": "DOCX", "label": "Word Document", "color": "#2563eb"},
+    "xls": {"type": "XLS", "label": "Excel Spreadsheet", "color": "#16a34a"},
+    "xlsx": {"type": "XLSX", "label": "Excel Spreadsheet", "color": "#16a34a"},
+    "csv": {"type": "CSV", "label": "CSV Spreadsheet", "color": "#059669"},
+    "xml": {"type": "XML", "label": "XML Data Document", "color": "#9333ea"},
+    "json": {"type": "JSON", "label": "JSON Data File", "color": "#d97706"},
+    "jpg": {"type": "JPG", "label": "JPEG Image", "color": "#0891b2"},
+    "jpeg": {"type": "JPEG", "label": "JPEG Image", "color": "#0891b2"},
+    "png": {"type": "PNG", "label": "PNG Image", "color": "#0891b2"},
+    "txt": {"type": "TXT", "label": "Text Document", "color": "#64748b"},
+    "zip": {"type": "ZIP", "label": "Zip Archive", "color": "#475569"},
+}
+
+
 # Language codes and special translations for instant direct answers
 LANGUAGE_CODES = {
     "hebrew": "he",
@@ -376,13 +395,83 @@ class SearchService:
 
         return None
 
+    def _detect_file_metadata(self, url: str, title: str = "") -> Optional[Dict[str, Any]]:
+        """Detect whether a URL or result title represents a downloadable file format."""
+        if not url:
+            return None
+        parsed = urllib.parse.urlparse(url)
+        path = parsed.path.lower()
+        
+        # Check direct path ending or parameter ending (.pdf, .ppt, etc.)
+        for ext, meta in FILE_TYPE_METADATA.items():
+            if path.endswith(f".{ext}") or f".{ext}?" in url.lower():
+                return meta
+        
+        # Check title tags like [PDF], (PDF)
+        title_upper = title.upper()
+        for ext, meta in FILE_TYPE_METADATA.items():
+            if f"[{ext.upper()}]" in title_upper or f"({ext.upper()})" in title_upper:
+                return meta
+
+        if "arxiv.org/abs/" in url or "arxiv.org/pdf/" in url:
+            return FILE_TYPE_METADATA["pdf"]
+            
+        return None
+
+    def _search_files(self, query: str, filetype: Optional[str] = None) -> List[Dict[str, Any]]:
+        """Direct file search querying DuckDuckGo specifically for file extensions."""
+        results = []
+        clean_ext = (filetype or "pdf").lower().strip().replace(".", "")
+        target_meta = FILE_TYPE_METADATA.get(clean_ext, {
+            "type": clean_ext.upper(),
+            "label": f"{clean_ext.upper()} Document",
+            "color": "#ef4444"
+        })
+
+        if DDGS is not None:
+            try:
+                with DDGS() as ddgs:
+                    file_query = f"{query} filetype:{clean_ext}"
+                    raw = list(ddgs.text(
+                        keywords=file_query,
+                        max_results=12,
+                        backend="lite"
+                    ))
+                    for item in raw:
+                        href = item.get("href", "")
+                        title = item.get("title", "")
+                        body = item.get("body", "")
+                        if not href or not title:
+                            continue
+                        domain = urllib.parse.urlparse(href).netloc.replace("www.", "")
+                        favicon = f"https://www.google.com/s2/favicons?domain={domain}&sz=64"
+
+                        detected = self._detect_file_metadata(href, title) or target_meta
+
+                        results.append({
+                            "title": title,
+                            "url": href,
+                            "snippet": body,
+                            "domain": domain,
+                            "favicon": favicon,
+                            "badge": f"{detected['type']} • Direct Download",
+                            "is_file": True,
+                            "file_type": detected["type"],
+                            "file_color": detected["color"],
+                            "download_url": href,
+                        })
+            except Exception as e:
+                print(f"[SearchService] File search error: {e}")
+        return results
+
     # -------------------------------------------------------------
     # 3. WEB / ALL SEARCH
     # -------------------------------------------------------------
-    def search_web(self, query: str, page: int = 1, time_filter: Optional[str] = None, focus: Optional[str] = None) -> Dict[str, Any]:
+    def search_web(self, query: str, page: int = 1, time_filter: Optional[str] = None, focus: Optional[str] = None, filetype: Optional[str] = None) -> Dict[str, Any]:
         """
         Search the web using DuckDuckGo with automatic fallback to Wikipedia & Google News.
         Supports Focus Modes (Lenses):
+        - 'files': Downloadable documents (PDF, PPT, Word, Excel, XML)
         - 'discussions': Reddit, Hacker News, Quora forums (unbiased human opinion)
         - 'dev': GitHub, Stack Overflow, official developer docs
         - 'academic': ArXiv, Research papers, Academic repositories
@@ -392,18 +481,35 @@ class SearchService:
         q = query.strip()
         max_results = 15
 
-        # 1. Specialized Focus Lens providers
-        if focus == "discussions":
+        # 1. Specialized Focus Lens & File Format providers
+        if filetype or focus == "files":
+            file_results = self._search_files(q, filetype=filetype)
+            results.extend(file_results)
+            # If PDF or academic files requested, also include ArXiv papers with direct PDF links
+            if filetype in [None, "pdf"] or focus in ["files", "academic"]:
+                arxiv_results = self._search_arxiv(q)
+                for ar in arxiv_results:
+                    if "arxiv.org/abs/" in ar["url"]:
+                        arxiv_id = ar["url"].split("/abs/")[-1].split("?")[0]
+                        ar["download_url"] = f"https://arxiv.org/pdf/{arxiv_id}.pdf"
+                        ar["is_file"] = True
+                        ar["file_type"] = "PDF"
+                        ar["file_color"] = "#ef4444"
+                        ar["badge"] = "PDF • Direct Download"
+                    results.append(ar)
+
+        elif focus == "discussions":
             results.extend(self._search_discussions(q))
         elif focus == "dev":
             results.extend(self._search_github(q))
         elif focus == "academic":
             results.extend(self._search_arxiv(q))
 
-        # 2. Direct Intent Card (Translation, Definition, Calculation)
-        direct_card = self._detect_direct_intent(q)
-        if direct_card:
-            results.append(direct_card)
+        # 2. Direct Intent Card (Translation, Definition, Calculation) - only when not restricting to files
+        if not filetype and focus != "files":
+            direct_card = self._detect_direct_intent(q)
+            if direct_card:
+                results.append(direct_card)
 
         # 3. General web search via DuckDuckGo (lite backend for maximum reliability)
         if DDGS is not None:
@@ -414,18 +520,26 @@ class SearchService:
                 elif time_filter == "h":
                     timelimit = "d"
 
+                search_kw = q
+                if filetype:
+                    search_kw = f"{q} filetype:{filetype.lower().strip().replace('.', '')}"
+                elif focus == "files":
+                    search_kw = f"{q} (filetype:pdf OR filetype:ppt OR filetype:doc)"
+                elif focus and focus != "all":
+                    search_kw = f"{q} {focus}"
+
                 with DDGS() as ddgs:
                     raw_results = []
                     try:
                         raw_results = list(ddgs.text(
-                            keywords=q if not focus or focus == "all" else f"{q} {focus}",
+                            keywords=search_kw,
                             max_results=max_results,
                             timelimit=timelimit,
                             backend="lite"
                         ))
                     except Exception:
                         raw_results = list(ddgs.text(
-                            keywords=q,
+                            keywords=search_kw,
                             max_results=max_results,
                             timelimit=timelimit
                         ))
@@ -447,35 +561,47 @@ class SearchService:
                         if not query_is_travel and any(spd in domain for spd in SPAM_TRAVEL_DOMAINS):
                             continue
 
-                        # Discard results that have zero word overlap with query
+                        # Discard results that have zero word overlap with query (unless file filter is active)
                         q_words = [w for w in re.findall(r"\w+", q.lower()) if len(w) > 2]
                         item_text = (title + " " + body).lower()
-                        if q_words and not any(w in item_text for w in q_words):
+                        if not filetype and focus != "files" and q_words and not any(w in item_text for w in q_words):
                             continue
 
                         favicon = f"https://www.google.com/s2/favicons?domain={domain}&sz=64"
                         
+                        # Check for file extension metadata
+                        file_meta = self._detect_file_metadata(href, title)
+                        is_file = bool(file_meta or filetype or focus == "files")
+                        active_meta = file_meta or (FILE_TYPE_METADATA.get((filetype or "pdf").lower().strip().replace(".", "")) if is_file else None)
+
                         # Avoid duplicates
                         if not any(r["url"] == href for r in results):
-                            results.append({
+                            result_item = {
                                 "title": title,
                                 "url": href,
                                 "snippet": body,
                                 "domain": domain,
                                 "favicon": favicon,
-                            })
+                            }
+                            if is_file and active_meta:
+                                result_item["is_file"] = True
+                                result_item["file_type"] = active_meta["type"]
+                                result_item["file_color"] = active_meta["color"]
+                                result_item["download_url"] = href
+                                result_item["badge"] = f"{active_meta['type']} • Direct Download"
+                            results.append(result_item)
             except Exception as e:
                 print(f"[SearchService] DDG web search error: {e}")
 
         # 4. DuckDuckGo Instant Answer API Fallback (never blocked on cloud datacenters)
-        if len(results) < 3:
+        if len(results) < 3 and not filetype and focus != "files":
             ddg_instant = self._search_duckduckgo_instant(q)
             for di in ddg_instant:
                 if not any(r["url"] == di["url"] for r in results):
                     results.append(di)
 
         # 5. Direct educational/topic search fallback via Wikipedia Full-Text Search
-        if len(results) < 3:
+        if len(results) < 3 and not filetype and focus != "files":
             try:
                 wiki_results = self._search_wikipedia(q)
                 for w in wiki_results:
@@ -487,7 +613,7 @@ class SearchService:
         # 6. Fallback to Google News ONLY for queries with news intent
         news_triggers = ["news", "latest", "breaking", "update", "today", "yesterday", "war", "election", "scandal", "incident", "death", "live"]
         is_news_query = any(w in q.lower().split() for w in news_triggers)
-        if len(results) < 3 and is_news_query:
+        if len(results) < 3 and is_news_query and not filetype and focus != "files":
             news_items = self.search_news(q)
             for n in news_items[:5]:
                 if not any(r["url"] == n["url"] for r in results):
@@ -498,6 +624,18 @@ class SearchService:
                         "domain": n["domain"],
                         "favicon": n["favicon"],
                     })
+
+        # 7. Tag any detected file URLs in the final result set with download metadata
+        for r in results:
+            if not r.get("is_file"):
+                f_meta = self._detect_file_metadata(r.get("url", ""), r.get("title", ""))
+                if f_meta:
+                    r["is_file"] = True
+                    r["file_type"] = f_meta["type"]
+                    r["file_color"] = f_meta["color"]
+                    r["download_url"] = r.get("url")
+                    if not r.get("badge"):
+                        r["badge"] = f"{f_meta['type']} • Direct Download"
 
         duration = round(time.time() - start_time, 2)
         total_estimate = max(len(results) * 123400, 1420000)

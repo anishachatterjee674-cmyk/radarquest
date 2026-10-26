@@ -9,6 +9,7 @@ const state = {
   query: '',
   category: 'all',
   focus: 'all',
+  filetype: '',
   page: 1,
   timeFilter: '',
   theme: localStorage.getItem('apex_search_theme') || 'dark',
@@ -67,6 +68,7 @@ function initDOM() {
   DOM.toolsToggleBtn = document.getElementById('tools-toggle-btn');
   DOM.toolsBar = document.getElementById('tools-bar');
   DOM.timeFilterSelect = document.getElementById('time-filter-select');
+  DOM.filetypeFilterSelect = document.getElementById('filetype-filter-select');
 
   // Containers
   DOM.webResultsList = document.getElementById('web-results-list');
@@ -170,9 +172,14 @@ function handleInitialRoute() {
   const cat = urlParams.get('category') || 'all';
   const page = parseInt(urlParams.get('page') || '1', 10);
   const time = urlParams.get('time') || '';
+  const focus = urlParams.get('focus') || 'all';
+  const filetype = urlParams.get('filetype') || '';
+
+  state.filetype = filetype;
+  if (DOM.filetypeFilterSelect) DOM.filetypeFilterSelect.value = filetype;
 
   if (q && q.trim()) {
-    triggerSearch(q.trim(), cat, page, time, false);
+    triggerSearch(q.trim(), cat, page, time, false, focus, filetype);
   } else {
     showHomepage();
   }
@@ -184,9 +191,14 @@ function handleInitialRoute() {
     const category = params.get('category') || 'all';
     const pageNum = parseInt(params.get('page') || '1', 10);
     const timeVal = params.get('time') || '';
+    const focusVal = params.get('focus') || 'all';
+    const filetypeVal = params.get('filetype') || '';
+
+    state.filetype = filetypeVal;
+    if (DOM.filetypeFilterSelect) DOM.filetypeFilterSelect.value = filetypeVal;
 
     if (query) {
-      triggerSearch(query, category, pageNum, timeVal, false);
+      triggerSearch(query, category, pageNum, timeVal, false, focusVal, filetypeVal);
     } else {
       showHomepage();
     }
@@ -212,7 +224,7 @@ function showSERP() {
 // --------------------------------------------------------------------------
 // 2. SEARCH EXECUTION & AGGREGATION
 // --------------------------------------------------------------------------
-async function triggerSearch(query, category = 'all', page = 1, timeFilter = '', pushHistory = true, focus = null) {
+async function triggerSearch(query, category = 'all', page = 1, timeFilter = '', pushHistory = true, focus = null, filetype = null) {
   const cleanQ = query.trim();
   if (!cleanQ) return;
 
@@ -221,6 +233,9 @@ async function triggerSearch(query, category = 'all', page = 1, timeFilter = '',
   state.page = page;
   state.timeFilter = timeFilter;
   if (focus !== null) state.focus = focus;
+  if (filetype !== null) state.filetype = filetype;
+
+  if (DOM.filetypeFilterSelect) DOM.filetypeFilterSelect.value = state.filetype || '';
 
   // Update inputs
   DOM.homeSearchInput.value = cleanQ;
@@ -235,6 +250,7 @@ async function triggerSearch(query, category = 'all', page = 1, timeFilter = '',
     if (page > 1) params.set('page', page);
     if (timeFilter) params.set('time', timeFilter);
     if (state.focus && state.focus !== 'all') params.set('focus', state.focus);
+    if (state.filetype) params.set('filetype', state.filetype);
     const newUrl = `${window.location.pathname}?${params.toString()}`;
     window.history.pushState({}, '', newUrl);
   }
@@ -248,6 +264,18 @@ async function triggerSearch(query, category = 'all', page = 1, timeFilter = '',
 
   // Show loaders & skeleton
   DOM.resultsStats.textContent = `Searching for "${cleanQ}"...`;
+  const activeLensBadge = document.getElementById('active-lens-badge');
+  if (activeLensBadge) {
+    if (state.filetype) {
+      activeLensBadge.textContent = `Format: ${state.filetype.toUpperCase()}`;
+      activeLensBadge.classList.remove('hidden');
+    } else if (state.focus && state.focus !== 'all') {
+      activeLensBadge.textContent = state.focus === 'files' ? 'Focus: PDF & Documents' : `Focus: ${state.focus.charAt(0).toUpperCase() + state.focus.slice(1)}`;
+      activeLensBadge.classList.remove('hidden');
+    } else {
+      activeLensBadge.classList.add('hidden');
+    }
+  }
 
   if (category === 'all' || category === 'ai') {
     DOM.aiOverviewCard.classList.remove('hidden');
@@ -266,6 +294,9 @@ async function triggerSearch(query, category = 'all', page = 1, timeFilter = '',
     let apiUrl = `/api/search?q=${encodeURIComponent(cleanQ)}&category=${encodeURIComponent(category)}&page=${page}&time=${encodeURIComponent(timeFilter)}`;
     if (state.focus && state.focus !== 'all') {
       apiUrl += `&focus=${encodeURIComponent(state.focus)}`;
+    }
+    if (state.filetype) {
+      apiUrl += `&filetype=${encodeURIComponent(state.filetype)}`;
     }
     const resp = await fetch(apiUrl);
     if (!resp.ok) throw new Error('Search request failed');
@@ -340,13 +371,25 @@ function renderWebView(data) {
           <span class="result-sitename">${escapeHtml(item.domain)}</span>
           <span class="result-url">${escapeHtml(item.url)}</span>
         </div>
+        ${item.is_file ? `<span class="filetype-badge" style="background:${item.file_color || '#ef4444'};">${escapeHtml(item.file_type || 'FILE')}</span>` : ''}
         ${item.badge ? `<span class="tldr-feature-pill" style="margin-left:auto; font-size:10px;">${escapeHtml(item.badge)}</span>` : ''}
       </div>
       <h2 class="result-title">
+        ${item.is_file ? `<span class="file-icon-tag" style="color:${item.file_color || '#ef4444'}; font-weight:800; margin-right:4px;">[${escapeHtml(item.file_type)}]</span>` : ''}
         <a href="${escapeHtml(item.url)}" target="_blank" rel="noopener noreferrer">${highlightQuery(item.title, state.query)}</a>
       </h2>
       <p class="result-snippet">${highlightQuery(item.snippet, state.query)}</p>
       <div class="result-actions">
+        ${item.is_file ? `
+          <a class="direct-download-btn" href="${escapeHtml(item.download_url || item.url)}" download target="_blank" rel="noopener noreferrer">
+            <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.5">
+              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+              <polyline points="7 10 12 15 17 10"></polyline>
+              <line x1="12" y1="15" x2="12" y2="3"></line>
+            </svg>
+            <span>Direct Download (${escapeHtml(item.file_type || 'File')})</span>
+          </a>
+        ` : ''}
         <button class="tldr-peek-btn" data-url="${escapeHtml(item.url)}" data-title="${escapeHtml(item.title)}">⚡ Instant TL;DR</button>
         <span class="action-chip-link copy-link-btn" data-url="${escapeHtml(item.url)}">Copy link</span>
         <span class="action-chip-link share-btn" data-title="${escapeHtml(item.title)}" data-url="${escapeHtml(item.url)}">Share</span>
@@ -1057,8 +1100,15 @@ function initEventListeners() {
   });
 
   DOM.timeFilterSelect.addEventListener('change', () => {
-    triggerSearch(state.query, state.category, 1, DOM.timeFilterSelect.value, true);
+    triggerSearch(state.query, state.category, 1, DOM.timeFilterSelect.value, true, state.focus, state.filetype);
   });
+
+  if (DOM.filetypeFilterSelect) {
+    DOM.filetypeFilterSelect.addEventListener('change', () => {
+      state.filetype = DOM.filetypeFilterSelect.value;
+      triggerSearch(state.query || DOM.serpSearchInput.value, state.category, 1, state.timeFilter, true, state.focus, state.filetype);
+    });
+  }
 
   // AI Overview Copy & Collapse
   DOM.aiCopyBtn.addEventListener('click', () => {
@@ -1209,7 +1259,7 @@ function initEventListeners() {
       state.focus = focus;
       const q = DOM.homeSearchInput.value.trim();
       if (q) {
-        triggerSearch(q, 'all', 1, state.timeFilter, true, focus);
+        triggerSearch(q, 'all', 1, state.timeFilter, true, focus, state.filetype);
       }
     });
   });
@@ -1218,7 +1268,7 @@ function initEventListeners() {
   document.querySelectorAll('.tab-btn[data-focus]').forEach(btn => {
     btn.addEventListener('click', () => {
       const focus = btn.getAttribute('data-focus');
-      triggerSearch(state.query || DOM.serpSearchInput.value, 'all', 1, state.timeFilter, true, focus);
+      triggerSearch(state.query || DOM.serpSearchInput.value, 'all', 1, state.timeFilter, true, focus, state.filetype);
     });
   });
 }

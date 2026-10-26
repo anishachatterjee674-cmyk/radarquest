@@ -101,6 +101,7 @@
         <button class="lens-filter-chip" data-focus="discussions" title="Search authentic discussions on Reddit & forums">💬 Reddit & Forums</button>
         <button class="lens-filter-chip" data-focus="dev" title="Search GitHub repositories and developer docs">💻 Dev & Code</button>
         <button class="lens-filter-chip" data-focus="academic" title="Search scientific research papers and ArXiv">📚 Academic Papers</button>
+        <button class="lens-filter-chip" data-focus="files" title="Search downloadable PDF, PPT, Word, Excel, and XML documents">📑 PDF & Docs</button>
       </div>
 
       <!-- Main Search Box -->
@@ -314,6 +315,11 @@
             <span>📚 Academic</span>
           </button>
 
+          <!-- Files & Documents Lens -->
+          <button class="tab-btn" data-category="all" data-focus="files" id="tab-files" title="Search downloadable PDF, PPT, Word, Excel, and XML documents">
+            <span>📑 PDF & Docs</span>
+          </button>
+
           <button class="tab-btn" data-category="images" id="tab-images">
             <span>🖼️ Images</span>
           </button>
@@ -348,6 +354,18 @@
             <option value="w">Past week</option>
             <option value="m">Past month</option>
             <option value="y">Past year</option>
+          </select>
+        </div>
+        <div class="tool-dropdown-wrapper">
+          <label for="filetype-filter-select" class="tool-label">File Format:</label>
+          <select id="filetype-filter-select" class="tool-select">
+            <option value="">All Formats</option>
+            <option value="pdf">PDF Documents (.pdf)</option>
+            <option value="ppt">PowerPoint (.ppt, .pptx)</option>
+            <option value="doc">Word Documents (.doc, .docx)</option>
+            <option value="xls">Excel Sheets (.xls, .xlsx, .csv)</option>
+            <option value="xml">XML & Data (.xml, .json)</option>
+            <option value="jpg">Images (.jpg, .png)</option>
           </select>
         </div>
       </div>
