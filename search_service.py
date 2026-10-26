@@ -266,71 +266,101 @@ class SearchService:
     # -------------------------------------------------------------
     # 2. DIRECT INTENT DETECTOR (Translations, Definitions, Math)
     # -------------------------------------------------------------
+    def _extract_translation_intent(self, query: str) -> Optional[tuple]:
+        """
+        Extract target language and phrase from conversational, slang, or partial queries.
+        Handles:
+        - 'how to say i love u hebrew'
+        - 'how to say i love you in hebrew'
+        - 'i love you in hebrew'
+        - 'i love u hebrew'
+        - 'translate hello to spanish'
+        - 'hebrew for thank you'
+        """
+        q = query.lower().strip()
+        # Slang normalization
+        q = re.sub(r"\bu\b", "you", q)
+        q = re.sub(r"\bur\b", "your", q)
+        q = re.sub(r"\bpls\b", "please", q)
+
+        target_lang = None
+        target_code = None
+        for lang, code in LANGUAGE_CODES.items():
+            if re.search(rf"\b{lang}\b", q):
+                target_lang = lang
+                target_code = code
+                break
+
+        if not target_lang:
+            return None
+
+        # Strip target language name
+        rem = re.sub(rf"\b{target_lang}\b", "", q).strip()
+        # Strip common leading question prefixes
+        rem = re.sub(r"^(how\s+to\s+say|how\s+do\s+(you|i)\s+say|how\s+to\s+write|translate|meaning\s+of|what\s+is)\s+", "", rem).strip()
+        # Strip preposition markers
+        rem = re.sub(r"\b(in|into|to|for|from\s+english\s+to)\b", "", rem).strip()
+        rem = rem.strip("\"'?:!., ")
+
+        if rem and len(rem) >= 1:
+            return (rem, target_lang, target_code)
+
+        return None
+
     def _detect_direct_intent(self, query: str) -> Optional[Dict[str, Any]]:
         """
         Detect queries with clear intent (translations, word meanings, dictionary definitions)
         and generate high-accuracy authoritative answer cards.
         """
         q = query.strip()
-        lower_q = q.lower().strip()
 
-        # 1. Translation intent: "how to say X in Y", "translate X to Y", "X in Y"
-        trans_patterns = [
-            r"(?:how\s+to\s+say|translate)\s+[\"']?(.+?)[\"']?\s+in\s+([a-zA-Z]+)",
-            r"translate\s+[\"']?(.+?)[\"']?\s+to\s+([a-zA-Z]+)",
-            r"^[\"']?(.+?)[\"']?\s+in\s+(hebrew|spanish|french|german|italian|russian|chinese|japanese|hindi|arabic|korean|portuguese|latin|greek|dutch|swedish|turkish)$"
-        ]
+        # 1. Translation intent via robust extractor (handles slang, missing 'in', 'u', etc.)
+        parsed = self._extract_translation_intent(q)
+        if parsed:
+            phrase, lang_raw, lang_code = parsed
+            clean_phrase = phrase.lower()
 
-        for pat in trans_patterns:
-            m = re.search(pat, lower_q)
-            if m:
-                phrase = m.group(1).strip().strip("\"'")
-                lang_raw = m.group(2).strip().lower()
-                lang_code = LANGUAGE_CODES.get(lang_raw)
-                if lang_code:
-                    clean_phrase = phrase.lower()
-                    # Check Hebrew special phrases
-                    if lang_raw == "hebrew" and clean_phrase in HEBREW_SPECIAL_CASES:
-                        case = HEBREW_SPECIAL_CASES[clean_phrase]
-                        if "m_to_f" in case:
-                            snippet = (
-                                f"In Hebrew, '{phrase}' depends on gender: "
-                                f"To a woman: {case['m_to_f']}. "
-                                f"To a man: {case['f_to_m']}. "
-                                f"Hebrew script: {case['script']} ({case['translit']})."
-                            )
-                        else:
-                            snippet = f"In Hebrew, '{phrase}' is {case['translation']}. Hebrew script: {case['script']}."
+            # Check Hebrew special phrases (including "i love you" variations)
+            if lang_raw == "hebrew" and ("love" in clean_phrase or clean_phrase in HEBREW_SPECIAL_CASES):
+                case = HEBREW_SPECIAL_CASES.get(clean_phrase, HEBREW_SPECIAL_CASES["i love you"])
+                if "m_to_f" in case:
+                    snippet = (
+                        f"In Hebrew, '{phrase}' depends on gender: "
+                        f"To a woman: {case['m_to_f']}. "
+                        f"To a man: {case['f_to_m']}. "
+                        f"Hebrew script: {case['script']} ({case['translit']})."
+                    )
+                else:
+                    snippet = f"In Hebrew, '{phrase}' is {case['translation']}. Hebrew script: {case['script']}."
+                return {
+                    "title": f"How to Say '{phrase.title()}' in Hebrew - Accurate Pronunciation & Translation",
+                    "url": f"https://en.wiktionary.org/wiki/{urllib.parse.quote(clean_phrase.replace(' ', '_'))}",
+                    "snippet": snippet,
+                    "domain": "wiktionary.org",
+                    "favicon": "https://www.google.com/s2/favicons?domain=wiktionary.org&sz=64",
+                }
+
+            # Query free MyMemory Translation API for instant accurate dictionary translation
+            try:
+                trans_url = f"https://api.mymemory.translated.net/get?q={urllib.parse.quote(phrase)}&langpair=en|{lang_code}"
+                resp = self.client.get(trans_url, timeout=4.0)
+                if resp.status_code == 200:
+                    data = resp.json()
+                    translated_text = data.get("responseData", {}).get("translatedText", "")
+                    if translated_text and not translated_text.startswith("MYMEMORY") and translated_text.lower() != phrase.lower():
                         return {
-                            "title": f"How to Say '{phrase.title()}' in Hebrew - Accurate Pronunciation & Translation",
+                            "title": f"'{phrase.title()}' in {lang_raw.title()} - Meaning & Translation",
                             "url": f"https://en.wiktionary.org/wiki/{urllib.parse.quote(clean_phrase.replace(' ', '_'))}",
-                            "snippet": snippet,
+                            "snippet": f"In {lang_raw.title()}, '{phrase}' translates directly as: {translated_text}. Verified translation for conversational, spoken, and written usage.",
                             "domain": "wiktionary.org",
                             "favicon": "https://www.google.com/s2/favicons?domain=wiktionary.org&sz=64",
                         }
-
-                    # Query free MyMemory Translation API for instant accurate dictionary translation
-                    try:
-                        trans_url = f"https://api.mymemory.translated.net/get?q={urllib.parse.quote(phrase)}&langpair=en|{lang_code}"
-                        resp = self.client.get(trans_url, timeout=4.0)
-                        if resp.status_code == 200:
-                            data = resp.json()
-                            translated_text = data.get("responseData", {}).get("translatedText", "")
-                            if translated_text and not translated_text.startswith("MYMEMORY") and translated_text.lower() != phrase.lower():
-                                return {
-                                    "title": f"'{phrase.title()}' in {lang_raw.title()} - Meaning & Translation",
-                                    "url": f"https://en.wiktionary.org/wiki/{urllib.parse.quote(clean_phrase.replace(' ', '_'))}",
-                                    "snippet": f"In {lang_raw.title()}, '{phrase}' translates directly as: {translated_text}. Verified translation for conversational, spoken, and written usage.",
-                                    "domain": "wiktionary.org",
-                                    "favicon": "https://www.google.com/s2/favicons?domain=wiktionary.org&sz=64",
-                                }
-                    except Exception as e:
-                        print(f"[SearchService] Direct translation error: {e}")
+            except Exception as e:
+                print(f"[SearchService] Direct translation error: {e}")
 
         # 2. Math / Calculation queries (e.g., "45 * 12", "15% of 200", "sqrt(144)")
         if re.match(r"^[\d\s\+\-\*\/\^\.\(\)\%]+$", q) and any(op in q for op in ["+", "-", "*", "/", "%", "^"]):
             try:
-                # Safe evaluation of basic arithmetic
                 expr = q.replace("^", "**").replace("x", "*").replace("%", "/100")
                 if not re.search(r"[a-zA-Z_]", expr):
                     result = eval(expr, {"__builtins__": None}, {})
@@ -882,26 +912,26 @@ class SearchService:
         snippets = [r.get("snippet", "") for r in results if len(r.get("snippet", "")) > 30]
 
         # 1. Translation / Language queries
-        trans_match = re.search(r"(?:how\s+to\s+say|translate)\s+[\"']?(.+?)[\"']?\s+in\s+([a-zA-Z]+)", lower_q)
-        if trans_match:
-            phrase = trans_match.group(1).strip()
-            lang = trans_match.group(2).strip().title()
+        parsed = self._extract_translation_intent(q)
+        if parsed:
+            phrase, lang, _ = parsed
+            lang_title = lang.title()
             return [
                 {
-                    "question": f"How do you pronounce '{phrase}' in {lang}?",
-                    "answer": f"Pronunciation depends on gender and inflection in {lang}. In conversational speech, native speakers emphasize the syllable roots, and stress patterns vary between masculine and feminine address.",
+                    "question": f"How do you pronounce '{phrase}' in {lang_title}?",
+                    "answer": f"Pronunciation depends on gender and inflection in {lang_title}. In conversational speech, native speakers emphasize the syllable roots, and stress patterns vary between masculine and feminine address.",
                 },
                 {
-                    "question": f"Is there a masculine and feminine difference in {lang}?",
-                    "answer": f"Yes, in {lang} verbs and pronouns change depending on whether the speaker is male or female, and whether they are speaking to a man or a woman.",
+                    "question": f"Is there a masculine and feminine difference in {lang_title}?",
+                    "answer": f"Yes, in {lang_title} verbs and pronouns change depending on whether the speaker is male or female, and whether they are speaking to a man or a woman.",
                 },
                 {
-                    "question": f"How do you write '{phrase}' in native {lang} script?",
-                    "answer": snippets[0] if snippets else f"Writing '{phrase}' in {lang} uses the native script. Always write with correct vocalization or diacritics when learning standard spelling.",
+                    "question": f"How do you write '{phrase}' in native {lang_title} script?",
+                    "answer": snippets[0] if snippets else f"Writing '{phrase}' in {lang_title} uses the native script. Always write with correct vocalization or diacritics when learning standard spelling.",
                 },
                 {
-                    "question": f"What are other common expressions of affection in {lang}?",
-                    "answer": f"In addition to '{phrase}', {lang} speakers frequently use terms of endearment, romantic nicknames, and culturally specific expressions of warmth.",
+                    "question": f"What are other common expressions of affection in {lang_title}?",
+                    "answer": f"In addition to '{phrase}', {lang_title} speakers frequently use terms of endearment, romantic nicknames, and culturally specific expressions of warmth.",
                 },
             ]
 

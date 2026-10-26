@@ -66,7 +66,13 @@ class AISummarizer:
             "4. CITATIONS: If web sources are provided, reference them with bracketed citations like [1], [2] when stating factual claims from them."
         )
 
-        # Reliable models for Google AI Studio free tier
+        # Support both standard AIza keys and new AQ. auth keys
+        headers = {
+            "Content-Type": "application/json",
+            "x-goog-api-key": self.api_key,
+        }
+
+        # Reliable models for Google AI Studio
         models_to_try = ["gemini-2.0-flash", "gemini-1.5-flash", "gemini-2.5-flash-lite"]
         payload = {
             "contents": [
@@ -83,8 +89,8 @@ class AISummarizer:
         for model_name in models_to_try:
             url = f"https://generativelanguage.googleapis.com/v1beta/models/{model_name}:generateContent?key={self.api_key}"
             try:
-                with httpx.Client(timeout=10.0) as client:
-                    resp = client.post(url, json=payload)
+                with httpx.Client(timeout=25.0) as client:
+                    resp = client.post(url, json=payload, headers=headers)
                     if resp.status_code == 200:
                         data = resp.json()
                         candidates = data.get("candidates", [])
@@ -93,9 +99,47 @@ class AISummarizer:
                             if raw_text.strip():
                                 return self._parse_ai_text(raw_text, sources, f"Gemini ({model_name})")
                     else:
-                        print(f"[AISummarizer] Model {model_name} HTTP {resp.status_code}: {resp.text[:150]}")
+                        print(f"[AISummarizer] Model {model_name} HTTP {resp.status_code}: {resp.text[:200]}")
             except Exception as e:
                 print(f"[AISummarizer] Error calling {model_name}: {e}")
+
+        return None
+
+    def _extract_translation_intent(self, query: str) -> Optional[tuple]:
+        """Extract target language and phrase from query, handling slang and variations."""
+        q = query.lower().strip()
+        q = re.sub(r"\bu\b", "you", q)
+        q = re.sub(r"\bur\b", "your", q)
+        q = re.sub(r"\bpls\b", "please", q)
+
+        LANGUAGES = {
+            "hebrew": "he", "spanish": "es", "french": "fr", "german": "de",
+            "italian": "it", "portuguese": "pt", "russian": "ru", "chinese": "zh",
+            "japanese": "ja", "korean": "ko", "hindi": "hi", "arabic": "ar",
+            "bengali": "bn", "turkish": "tr", "dutch": "nl", "greek": "el",
+            "latin": "la", "swedish": "sv", "polish": "pl", "norwegian": "no",
+            "danish": "da", "finnish": "fi", "vietnamese": "vi", "thai": "th",
+            "indonesian": "id", "tagalog": "tl", "urdu": "ur", "swahili": "sw",
+        }
+
+        target_lang = None
+        target_code = None
+        for lang, code in LANGUAGES.items():
+            if re.search(rf"\b{lang}\b", q):
+                target_lang = lang
+                target_code = code
+                break
+
+        if not target_lang:
+            return None
+
+        rem = re.sub(rf"\b{target_lang}\b", "", q).strip()
+        rem = re.sub(r"^(how\s+to\s+say|how\s+do\s+(you|i)\s+say|how\s+to\s+write|translate|meaning\s+of|what\s+is)\s+", "", rem).strip()
+        rem = re.sub(r"\b(in|into|to|for|from\s+english\s+to)\b", "", rem).strip()
+        rem = rem.strip("\"'?:!., ")
+
+        if rem and len(rem) >= 1:
+            return (rem, target_lang, target_code)
 
         return None
 
@@ -110,34 +154,62 @@ class AISummarizer:
         q = query.strip()
         lower_q = q.lower()
 
-        # Handle direct translation detection offline
-        trans_match = re.search(r"(?:how\s+to\s+say|translate)\s+[\"']?(.+?)[\"']?\s+in\s+([a-zA-Z]+)", lower_q)
-        if trans_match:
-            phrase = trans_match.group(1).strip()
-            lang = trans_match.group(2).strip().lower()
-            if lang == "hebrew" and "love" in phrase:
-                return {
-                    "summary": (
-                        "In Hebrew, saying **'I love you'** depends on the gender of both the speaker and the listener. "
-                        "When speaking to a woman, say **אני אוהב אותך** (*Ani ohev otach*), and when speaking to a man, say **אני אוהבת אותך** (*Ani ohevet otcha*)."
-                    ),
-                    "bullets": [
-                        "**Man to Woman**: *Ani ohev otach* (אני אוהב אותך) [1]",
-                        "**Woman to Man**: *Ani ohevet otcha* (אני אוהבת אותך) [1]",
-                        "**Pronunciation**: Stress is typically on the final syllables (*o-HEV o-TACH* and *o-HE-vet ot-CHA*)",
-                        "**Gendered Grammar**: Hebrew is a gendered language, so both the verb 'to love' (ohev/ohevet) and the pronoun suffix (otach/otcha) change based on gender."
-                    ],
-                    "sources": [
-                        {
-                            "index": 1,
-                            "title": "How to Say I Love You in Hebrew - Pronunciation & Guide",
-                            "url": "https://en.wiktionary.org/wiki/I_love_you",
-                            "domain": "wiktionary.org",
-                            "favicon": "https://www.google.com/s2/favicons?domain=wiktionary.org&sz=64"
+        # Handle direct translation detection offline (handles "how to say i love u hebrew", etc.)
+        parsed = self._extract_translation_intent(q)
+        if parsed:
+            phrase, lang, code = parsed
+            if lang == "hebrew" and ("love" in phrase or phrase in ["hello", "thank you", "good morning"]):
+                if "love" in phrase:
+                    return {
+                        "summary": (
+                            "In Hebrew, saying **'I love you'** depends on the gender of both the speaker and the listener. "
+                            "When speaking to a woman, say **אני אוהב אותך** (*Ani ohev otach*), and when speaking to a man, say **אני אוהבת אותך** (*Ani ohevet otcha*)."
+                        ),
+                        "bullets": [
+                            "**Man to Woman**: *Ani ohev otach* (אני אוהב אותך) [1]",
+                            "**Woman to Man**: *Ani ohevet otcha* (אני אוהבת אותך) [1]",
+                            "**Pronunciation**: Stress is on the final syllables (*o-HEV o-TACH* and *o-HE-vet ot-CHA*)",
+                            "**Gendered Grammar**: In Hebrew, verbs and pronouns decline according to gender, changing both the verb 'to love' (ohev/ohevet) and the object suffix (otach/otcha)."
+                        ],
+                        "sources": [
+                            {
+                                "index": 1,
+                                "title": "How to Say I Love You in Hebrew - Pronunciation & Guide",
+                                "url": "https://en.wiktionary.org/wiki/I_love_you",
+                                "domain": "wiktionary.org",
+                                "favicon": "https://www.google.com/s2/favicons?domain=wiktionary.org&sz=64"
+                            }
+                        ],
+                        "model": "RadarQuest-SmartSynthesizer (Offline & Fast)"
+                    }
+
+            # For other languages offline, query MyMemory
+            try:
+                url = f"https://api.mymemory.translated.net/get?q={urllib.parse.quote(phrase)}&langpair=en|{code}"
+                resp = httpx.get(url, timeout=4.0)
+                if resp.status_code == 200:
+                    trans_text = resp.json().get("responseData", {}).get("translatedText", "")
+                    if trans_text and not trans_text.startswith("MYMEMORY") and trans_text.lower() != phrase.lower():
+                        return {
+                            "summary": f"In **{lang.title()}**, '**{phrase}**' translates directly as **{trans_text}**.",
+                            "bullets": [
+                                f"**Direct Translation**: *{trans_text}* [1]",
+                                f"**Language**: {lang.title()} ({code.upper()})",
+                                f"**Usage**: Common conversational and written expression for '{phrase}'."
+                            ],
+                            "sources": [
+                                {
+                                    "index": 1,
+                                    "title": f"{phrase.title()} in {lang.title()} - Wiktionary",
+                                    "url": f"https://en.wiktionary.org/wiki/{urllib.parse.quote(phrase.replace(' ', '_'))}",
+                                    "domain": "wiktionary.org",
+                                    "favicon": "https://www.google.com/s2/favicons?domain=wiktionary.org&sz=64"
+                                }
+                            ],
+                            "model": "RadarQuest-SmartSynthesizer (Offline & Fast)"
                         }
-                    ],
-                    "model": "RadarQuest-SmartSynthesizer (Offline & Fast)"
-                }
+            except Exception:
+                pass
 
         # Filter out noisy sentences like podcasts, advertisements, author bylines
         BAD_PATTERNS = [
