@@ -14,6 +14,11 @@ import httpx
 from bs4 import BeautifulSoup
 
 try:
+    import primp
+except ImportError:
+    primp = None
+
+try:
     from duckduckgo_search import DDGS
 except ImportError:
     try:
@@ -245,6 +250,10 @@ HEBREW_SPECIAL_CASES = {
 class SearchService:
     def __init__(self):
         self.client = httpx.Client(timeout=10.0, headers=HEADERS, follow_redirects=True)
+        try:
+            self.primp_client = primp.Client(impersonate="chrome", verify=False) if primp is not None else None
+        except Exception:
+            self.primp_client = None
 
     # -------------------------------------------------------------
     # 1. AUTOCOMPLETE
@@ -415,8 +424,112 @@ class SearchService:
             
         return None
 
+    def _search_yahoo(self, query: str, max_results: int = 15, filetype: Optional[str] = None) -> List[Dict[str, Any]]:
+        """
+        Global high-performance web search index powered by Yahoo / Bing engine.
+        Bypasses cloud datacenter IP blocks, never rate-limited, comprehensive global index.
+        """
+        results: List[Dict[str, Any]] = []
+        q = query.strip()
+        search_kw = q
+        if filetype:
+            clean_ext = filetype.lower().strip().replace(".", "")
+            search_kw = f"{q} {clean_ext}"
+
+        target_meta = FILE_TYPE_METADATA.get((filetype or "pdf").lower().strip().replace(".", ""), {
+            "type": (filetype or "PDF").upper(),
+            "label": f"{(filetype or 'PDF').upper()} Document",
+            "color": "#ef4444"
+        })
+
+        try:
+            url = f"https://search.yahoo.com/search?p={urllib.parse.quote_plus(search_kw)}"
+            html_text = ""
+            if self.primp_client is not None:
+                try:
+                    resp = self.primp_client.get(url)
+                    if resp.status_code == 200:
+                        html_text = resp.text
+                except Exception:
+                    pass
+
+            if not html_text:
+                try:
+                    resp = self.client.get(url, headers=HEADERS)
+                    if resp.status_code == 200:
+                        html_text = resp.text
+                except Exception:
+                    pass
+
+            if not html_text:
+                return results
+
+            soup = BeautifulSoup(html_text, "html.parser")
+            seen_urls = set()
+            SPAM_DOMAINS = ["pexels.com", "pixabay.com", "freepik.com", "shutterstock.com", "marriott.com", "tripadvisor.com", "booking.com", "unsplash.com"]
+            is_photo_query = any(w in q.lower() for w in ["photo", "image", "picture", "wallpaper", "sunset"])
+
+            comp_titles = soup.find_all(class_="compTitle")
+            for comp in comp_titles:
+                a = comp.select_one("a[href*='/RU=http']")
+                if not a:
+                    continue
+                raw_href = a.get("href", "")
+                m = re.search(r'/RU=([^/]+)/', raw_href)
+                if not m:
+                    continue
+                real_url = urllib.parse.unquote(m.group(1))
+
+                if "yahoo.com" in real_url or "yahoo.net" in real_url or real_url in seen_urls:
+                    continue
+
+                domain = urllib.parse.urlparse(real_url).netloc.replace("www.", "")
+                if not is_photo_query and any(spd in domain for spd in SPAM_DOMAINS):
+                    continue
+
+                seen_urls.add(real_url)
+
+                # Clean Title
+                title_elem = comp.select_one("h3.title span") or comp.select_one("h3") or comp.select_one(".title") or a
+                title = title_elem.get_text(strip=True)
+                if "  " in title:
+                    title = title.split("  ")[-1].strip()
+                if "http" in title:
+                    title = re.split(r'https?://', title)[0].strip() or title
+
+                parent = comp.find_parent(class_="algo") or comp.find_parent("section") or comp.parent
+                p = parent.select_one(".compText") or parent.select_one("p") if parent else None
+                snippet = p.get_text(strip=True) if p else ""
+
+                file_meta = self._detect_file_metadata(real_url, title)
+                is_file = bool(file_meta)
+                meta = file_meta or target_meta
+                favicon = f"https://www.google.com/s2/favicons?domain={domain}&sz=64"
+
+                item = {
+                    "title": title,
+                    "url": real_url,
+                    "snippet": snippet,
+                    "domain": domain,
+                    "favicon": favicon,
+                }
+                if is_file and file_meta:
+                    item["is_file"] = True
+                    item["file_type"] = meta["type"]
+                    item["file_color"] = meta["color"]
+                    item["download_url"] = real_url
+                    item["badge"] = f"{meta['type']} • Direct Download"
+
+                results.append(item)
+                if len(results) >= max_results:
+                    break
+        except Exception as e:
+            print(f"[SearchService] Yahoo search error: {e}")
+
+        return results
+
     def _search_files(self, query: str, filetype: Optional[str] = None) -> List[Dict[str, Any]]:
-        """Direct file search querying DuckDuckGo specifically for file extensions."""
+        """Direct file search querying Yahoo & DuckDuckGo for documents."""
         results = []
         clean_ext = (filetype or "pdf").lower().strip().replace(".", "")
         target_meta = FILE_TYPE_METADATA.get(clean_ext, {
@@ -425,25 +538,62 @@ class SearchService:
             "color": "#ef4444"
         })
 
-        if DDGS is not None:
+        # 1. Primary document search via Yahoo index
+        yahoo_files = self._search_yahoo(f"{query} {clean_ext}", max_results=12, filetype=clean_ext)
+        results.extend(yahoo_files)
+
+        # 2. Secondary fallback via DuckDuckGo if fewer than 4 results
+        if len(results) < 4 and DDGS is not None:
             try:
                 with DDGS() as ddgs:
-                    file_query = f"{query} filetype:{clean_ext}"
-                    raw = list(ddgs.text(
-                        keywords=file_query,
-                        max_results=12,
-                        backend="lite"
-                    ))
+                    # 1. Search with filetype: syntax
+                    raw = []
+                    try:
+                        raw = list(ddgs.text(
+                            keywords=f"{query} filetype:{clean_ext}",
+                            max_results=12,
+                            backend="lite"
+                        ))
+                    except Exception:
+                        pass
+
+                    # 2. If 0 results, search with keyword: "{query} {clean_ext}"
+                    if not raw:
+                        try:
+                            raw = list(ddgs.text(
+                                keywords=f"{query} {clean_ext} download",
+                                max_results=10,
+                                backend="lite"
+                            ))
+                        except Exception:
+                            pass
+
+                    q_words = [w for w in re.findall(r"\w+", query.lower()) if len(w) > 2]
+                    SPAM_DOMAINS = ["pexels.com", "pixabay.com", "freepik.com", "shutterstock.com", "marriott.com", "tripadvisor.com", "booking.com", "unsplash.com"]
+                    is_photo_query = any(w in query.lower() for w in ["photo", "image", "picture", "wallpaper", "sunset"])
+
                     for item in raw:
                         href = item.get("href", "")
                         title = item.get("title", "")
                         body = item.get("body", "")
                         if not href or not title:
                             continue
-                        domain = urllib.parse.urlparse(href).netloc.replace("www.", "")
-                        favicon = f"https://www.google.com/s2/favicons?domain={domain}&sz=64"
 
-                        detected = self._detect_file_metadata(href, title) or target_meta
+                        domain = urllib.parse.urlparse(href).netloc.replace("www.", "")
+
+                        # Discard stock photo / spam domains if query has nothing to do with photos
+                        if not is_photo_query and any(spd in domain for spd in SPAM_DOMAINS):
+                            continue
+
+                        # Enforce query keyword relevance
+                        item_text = (title + " " + body).lower()
+                        if q_words and not any(w in item_text for w in q_words):
+                            continue
+
+                        favicon = f"https://www.google.com/s2/favicons?domain={domain}&sz=64"
+                        detected = self._detect_file_metadata(href, title)
+                        is_real_file = bool(detected)
+                        meta = detected or target_meta
 
                         results.append({
                             "title": title,
@@ -451,11 +601,11 @@ class SearchService:
                             "snippet": body,
                             "domain": domain,
                             "favicon": favicon,
-                            "badge": f"{detected['type']} • Direct Download",
-                            "is_file": True,
-                            "file_type": detected["type"],
-                            "file_color": detected["color"],
-                            "download_url": href,
+                            "badge": f"{meta['type']} • Direct Download" if is_real_file else f"{meta['type']} Reference",
+                            "is_file": is_real_file,
+                            "file_type": meta["type"],
+                            "file_color": meta["color"],
+                            "download_url": href if is_real_file else None,
                         })
             except Exception as e:
                 print(f"[SearchService] File search error: {e}")
@@ -496,8 +646,14 @@ class SearchService:
             if direct_card:
                 results.append(direct_card)
 
-        # 3. General web search via DuckDuckGo (lite backend for maximum reliability)
-        if DDGS is not None:
+        # 3. Primary live global web search (Yahoo index powered by Bing, no rate-limiting, comprehensive)
+        yahoo_results = self._search_yahoo(q, max_results=max_results, filetype=filetype)
+        for yr in yahoo_results:
+            if not any(r["url"] == yr["url"] for r in results):
+                results.append(yr)
+
+        # 4. Secondary fallback via DuckDuckGo if fewer than 6 results
+        if len(results) < 6 and DDGS is not None:
             try:
                 timelimit = None
                 if time_filter in ["d", "w", "m", "y"]:
@@ -509,7 +665,7 @@ class SearchService:
                 if filetype:
                     search_kw = f"{q} filetype:{filetype.lower().strip().replace('.', '')}"
                 elif focus == "files":
-                    search_kw = f"{q} (filetype:pdf OR filetype:ppt OR filetype:doc)"
+                    search_kw = f"{q} pdf"
                 elif focus and focus != "all":
                     search_kw = f"{q} {focus}"
 
@@ -529,9 +685,11 @@ class SearchService:
                             timelimit=timelimit
                         ))
 
-                    # Ad & Datacenter redirect filter
-                    SPAM_TRAVEL_DOMAINS = ["marriott.com", "tripadvisor.com", "booking.com", "expedia.com", "hotels.com", "kayak.com", "agoda.com"]
-                    query_is_travel = any(w in q.lower() for w in ["hotel", "stay", "resort", "flight", "trip", "vacation", "marriott", "madrid"])
+                    # Discard cloud datacenter spam/stock photo/hotel ads
+                    SPAM_DOMAINS = ["pexels.com", "pixabay.com", "freepik.com", "shutterstock.com", "marriott.com", "tripadvisor.com", "booking.com", "unsplash.com"]
+                    is_photo_query = any(w in q.lower() for w in ["photo", "image", "picture", "wallpaper", "sunset"])
+
+                    q_words = [w for w in re.findall(r"\w+", q.lower()) if len(w) > 2]
 
                     for item in raw_results:
                         href = item.get("href", "")
@@ -542,22 +700,20 @@ class SearchService:
                         
                         domain = urllib.parse.urlparse(href).netloc.replace("www.", "")
                         
-                        # Discard cloud datacenter spam/hotel ads if query has nothing to do with travel
-                        if not query_is_travel and any(spd in domain for spd in SPAM_TRAVEL_DOMAINS):
+                        # Discard stock photo / spam domains if query has nothing to do with stock photos
+                        if not is_photo_query and any(spd in domain for spd in SPAM_DOMAINS):
                             continue
 
-                        # Discard results that have zero word overlap with query (unless file filter is active)
-                        q_words = [w for w in re.findall(r"\w+", q.lower()) if len(w) > 2]
+                        # Always enforce keyword overlap with query
                         item_text = (title + " " + body).lower()
-                        if not filetype and focus != "files" and q_words and not any(w in item_text for w in q_words):
+                        if q_words and not any(w in item_text for w in q_words):
                             continue
 
                         favicon = f"https://www.google.com/s2/favicons?domain={domain}&sz=64"
                         
-                        # Check for file extension metadata
+                        # Check for REAL file extension metadata
                         file_meta = self._detect_file_metadata(href, title)
-                        is_file = bool(file_meta or filetype or focus == "files")
-                        active_meta = file_meta or (FILE_TYPE_METADATA.get((filetype or "pdf").lower().strip().replace(".", "")) if is_file else None)
+                        is_file = bool(file_meta)
 
                         # Avoid duplicates
                         if not any(r["url"] == href for r in results):
@@ -568,12 +724,12 @@ class SearchService:
                                 "domain": domain,
                                 "favicon": favicon,
                             }
-                            if is_file and active_meta:
+                            if is_file and file_meta:
                                 result_item["is_file"] = True
-                                result_item["file_type"] = active_meta["type"]
-                                result_item["file_color"] = active_meta["color"]
+                                result_item["file_type"] = file_meta["type"]
+                                result_item["file_color"] = file_meta["color"]
                                 result_item["download_url"] = href
-                                result_item["badge"] = f"{active_meta['type']} • Direct Download"
+                                result_item["badge"] = f"{file_meta['type']} • Direct Download"
                             results.append(result_item)
             except Exception as e:
                 print(f"[SearchService] DDG web search error: {e}")

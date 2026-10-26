@@ -4,3 +4,4 @@ httpx>=0.27.0
 beautifulsoup4>=4.12.0
 duckduckgo-search>=6.0.0
 python-multipart>=0.0.9
+primp>=0.6.0
