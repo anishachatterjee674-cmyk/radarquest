@@ -207,6 +207,13 @@ function handleInitialRoute() {
 
 function showHomepage() {
   state.query = '';
+  state.category = 'all';
+  state.focus = 'all';
+  state.filetype = '';
+  if (DOM.filetypeFilterSelect) DOM.filetypeFilterSelect.value = '';
+  document.querySelectorAll('.lens-filter-chip').forEach(c => {
+    c.classList.toggle('active', c.getAttribute('data-focus') === 'all');
+  });
   document.title = 'RadarQuest - Explore the World\'s Knowledge';
   DOM.homepageView.classList.remove('hidden');
   DOM.serpView.classList.add('hidden');
@@ -321,7 +328,20 @@ async function triggerSearch(query, category = 'all', page = 1, timeFilter = '',
 function updateCategoryTabsUI() {
   DOM.tabButtons.forEach(btn => {
     const cat = btn.getAttribute('data-category');
-    if (cat === state.category) {
+    const btnFocus = btn.getAttribute('data-focus') || 'all';
+
+    let isActive = false;
+    if (state.category === 'all') {
+      if (btnFocus === (state.focus || 'all')) {
+        isActive = true;
+      }
+    } else {
+      if (cat === state.category && !btn.hasAttribute('data-focus')) {
+        isActive = true;
+      }
+    }
+
+    if (isActive) {
       btn.classList.add('active');
     } else {
       btn.classList.remove('active');
@@ -1033,7 +1053,10 @@ function initEventListeners() {
   });
 
   DOM.homeSearchBtn.addEventListener('click', () => {
-    triggerSearch(DOM.homeSearchInput.value, 'all', 1, '', true);
+    const activeChip = document.querySelector('.lens-filter-chip.active');
+    const focus = activeChip ? (activeChip.getAttribute('data-focus') || 'all') : 'all';
+    const filetype = (focus === 'files') ? (state.filetype || '') : '';
+    triggerSearch(DOM.homeSearchInput.value, 'all', 1, '', true, focus, filetype);
   });
 
   // "I'm Feeling Lucky" Button Handler
@@ -1082,14 +1105,20 @@ function initEventListeners() {
   });
 
   DOM.serpSearchSubmitBtn.addEventListener('click', () => {
-    triggerSearch(DOM.serpSearchInput.value, state.category, 1, state.timeFilter, true);
+    triggerSearch(DOM.serpSearchInput.value, state.category, 1, state.timeFilter, true, state.focus, state.filetype);
   });
 
-  // Category Tab Click Handlers
+  // Category & Focus Tab Click Handlers
   DOM.tabButtons.forEach(btn => {
     btn.addEventListener('click', () => {
-      const cat = btn.getAttribute('data-category');
-      triggerSearch(state.query || DOM.serpSearchInput.value, cat, 1, state.timeFilter, true);
+      const cat = btn.getAttribute('data-category') || 'all';
+      const focus = btn.getAttribute('data-focus') || 'all';
+      const filetype = (focus === 'files') ? (state.filetype || '') : '';
+      state.category = cat;
+      state.focus = focus;
+      state.filetype = filetype;
+      if (DOM.filetypeFilterSelect) DOM.filetypeFilterSelect.value = filetype;
+      triggerSearch(state.query || DOM.serpSearchInput.value, cat, 1, state.timeFilter, true, focus, filetype);
     });
   });
 
@@ -1261,14 +1290,6 @@ function initEventListeners() {
       if (q) {
         triggerSearch(q, 'all', 1, state.timeFilter, true, focus, state.filetype);
       }
-    });
-  });
-
-  // Focus Lens Tabs on SERP
-  document.querySelectorAll('.tab-btn[data-focus]').forEach(btn => {
-    btn.addEventListener('click', () => {
-      const focus = btn.getAttribute('data-focus');
-      triggerSearch(state.query || DOM.serpSearchInput.value, 'all', 1, state.timeFilter, true, focus, state.filetype);
     });
   });
 }

@@ -412,9 +412,6 @@ class SearchService:
         for ext, meta in FILE_TYPE_METADATA.items():
             if f"[{ext.upper()}]" in title_upper or f"({ext.upper()})" in title_upper:
                 return meta
-
-        if "arxiv.org/abs/" in url or "arxiv.org/pdf/" in url:
-            return FILE_TYPE_METADATA["pdf"]
             
         return None
 
@@ -485,18 +482,6 @@ class SearchService:
         if filetype or focus == "files":
             file_results = self._search_files(q, filetype=filetype)
             results.extend(file_results)
-            # If PDF or academic files requested, also include ArXiv papers with direct PDF links
-            if filetype in [None, "pdf"] or focus in ["files", "academic"]:
-                arxiv_results = self._search_arxiv(q)
-                for ar in arxiv_results:
-                    if "arxiv.org/abs/" in ar["url"]:
-                        arxiv_id = ar["url"].split("/abs/")[-1].split("?")[0]
-                        ar["download_url"] = f"https://arxiv.org/pdf/{arxiv_id}.pdf"
-                        ar["is_file"] = True
-                        ar["file_type"] = "PDF"
-                        ar["file_color"] = "#ef4444"
-                        ar["badge"] = "PDF • Direct Download"
-                    results.append(ar)
 
         elif focus == "discussions":
             results.extend(self._search_discussions(q))
